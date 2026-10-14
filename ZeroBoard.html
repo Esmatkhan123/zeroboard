@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZeroBoard </title>
+  <style>
+    :root {
+      --bg: #070d19;
+      --canvas-dots: #1e293b;
+      --header-bg: #060b14;
+      --card-bg: #0f172a;
+      --card-header: #141f36;
+      --card-border: #233554;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-line: #1e293b;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --danger: #ef4444;
+      --item-done: #64748b;
+    }
+
+    [data-theme="light"] {
+      --bg: #f1f5f9;
+      --canvas-dots: #cbd5e1;
+      --header-bg: #ffffff;
+      --card-bg: #ffffff;
+      --card-header: #f8fafc;
+      --card-border: #cbd5e1;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-line: #e2e8f0;
+      --accent: #0284c7;
+      --accent-hover: #0369a1;
+      --danger: #dc2626;
+      --item-done: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    /* Top App Header */
+    header {
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border-line);
+      padding: 16px 28px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      z-index: 50;
+    }
+
+    .header-left h1 {
+      font-family: "Georgia", "Times New Roman", serif;
+      font-size: 1.9rem;
+      font-weight: 500;
+      letter-spacing: -0.5px;
+      color: var(--text-main);
+    }
+
+    .header-left p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-text {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.88rem;
+      padding: 6px 10px;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+
+    .btn-text:hover {
+      color: var(--text-main);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #ffffff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 0.9rem;
+      transition: background 0.15s, transform 0.05s;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-primary:active {
+      transform: scale(0.97);
+    }
+
+    /* Tab Bar */
+    .tab-bar {
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border-line);
+      display: flex;
+      align-items: center;
+      padding: 0 28px;
+      gap: 24px;
+      overflow-x: auto;
+      z-index: 40;
+    }
+
+    .tab-item {
+      padding: 12px 2px 10px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .tab-item.active {
+      color: var(--text-main);
+    }
+
+    .tab-item.active::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--accent);
+    }
+
+    .tab-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .tab-count {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 2px;
+      opacity: 0.8;
+    }
+
+    .new-page-btn {
+      background: transparent;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      margin-left: 6px;
+      white-space: nowrap;
+    }
+
+    .new-page-btn:hover {
+      color: var(--text-main);
+      border-color: var(--accent);
+    }
+
+    /* Board Canvas */
+    .canvas-viewport {
+      flex: 1;
+      position: relative;
+      overflow: auto;
+      background-color: var(--bg);
+      background-image: radial-gradient(var(--canvas-dots) 1.5px, transparent 1.5px);
+      background-size: 24px 24px;
+    }
+
+    .canvas-surface {
+      min-width: 3200px;
+      min-height: 2400px;
+      position: relative;
+    }
+
+    /* Floating Card Note with Full Background Tint */
+    .note-card {
+      position: absolute;
+      background-color: var(--card-bg);
+      background-image: linear-gradient(var(--note-bg-tint, rgba(56, 189, 248, 0.22)), var(--note-bg-tint, rgba(56, 189, 248, 0.22)));
+      border: 1px solid var(--note-border-tint, rgba(56, 189, 248, 0.5));
+      border-radius: 10px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 0 20px -3px var(--note-bg-tint, transparent);
+      display: flex;
+      flex-direction: column;
+      min-width: 230px;
+      min-height: 150px;
+      backdrop-filter: blur(8px);
+      transition: background-image 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .note-card.active-drag {
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 28px 2px var(--note-accent);
+      z-index: 1000 !important;
+    }
+
+    .note-header {
+      background-color: var(--card-header);
+      background-image: linear-gradient(var(--note-header-tint, rgba(56, 189, 248, 0.38)), var(--note-header-tint, rgba(56, 189, 248, 0.38)));
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: grab;
+      border-bottom: 1px solid var(--note-border-tint, rgba(56, 189, 248, 0.45));
+      border-radius: 9px 9px 0 0;
+      position: relative;
+      transition: background-image 0.25s ease, border-color 0.25s ease;
+    }
+
+    .note-header:active {
+      cursor: grabbing;
+    }
+
+    .note-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .drag-dots {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      letter-spacing: -2px;
+    }
+
+    .note-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+    }
+
+    .note-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Sequential Color Circle Button */
+    .color-circle-btn {
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .color-circle-btn:hover {
+      transform: scale(1.25);
+      box-shadow: 0 0 10px currentColor;
+    }
+
+    .color-circle-btn:active {
+      transform: scale(0.92);
+    }
+
+    .ctrl-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.85rem;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+
+    .ctrl-btn:hover {
+      color: var(--text-main);
+    }
+
+    .ctrl-btn.close:hover {
+      color: var(--danger);
+    }
+
+    /* Card Task Body */
+    .note-body {
+      flex: 1;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      user-select: text;
+      overflow-y: auto;
+    }
+
+    .task-input-bar {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    /* Mode Button (Default: Note) */
+    .mode-toggle-btn {
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid var(--note-border-tint, var(--card-border));
+      color: var(--text-main);
+      padding: 5px 8px;
+      border-radius: 5px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    .mode-toggle-btn.has-box {
+      color: var(--note-accent, var(--accent));
+      border-color: var(--note-accent, var(--accent));
+      background: rgba(0, 0, 0, 0.4);
+    }
+
+    .task-input {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--note-border-tint, var(--card-border));
+      color: var(--text-main);
+      padding: 6px 9px;
+      border-radius: 5px;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .task-input:focus {
+      border-color: var(--note-accent, var(--accent));
+    }
+
+    .task-add-btn {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--note-border-tint, var(--card-border));
+      color: var(--text-main);
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+
+    .task-add-btn:hover {
+      border-color: var(--note-accent, var(--accent));
+    }
+
+    /* Task List */
+    .task-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .task-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.88rem;
+      padding: 2px 0;
+    }
+
+    /* Custom Modern Rounded Checkbox */
+    .custom-check {
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      border: 1.5px solid var(--note-border-tint, var(--card-border));
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .custom-check:hover {
+      border-color: var(--note-accent, var(--accent));
+      transform: scale(1.08);
+    }
+
+    .task-row.done .custom-check {
+      background: var(--note-accent, var(--accent));
+      border-color: var(--note-accent, var(--accent));
+    }
+
+    .custom-check::after {
+      content: "";
+      width: 4px;
+      height: 8px;
+      border: solid white;
+      border-width: 0 1.8px 1.8px 0;
+      transform: rotate(45deg) scale(0);
+      opacity: 0;
+      margin-top: -1.5px;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    .task-row.done .custom-check::after {
+      transform: rotate(45deg) scale(1);
+      opacity: 1;
+    }
+
+    /* Plain Note Bullet Indicator */
+    .note-bullet {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--note-accent, var(--accent));
+      opacity: 0.9;
+      margin: 0 5px;
+      flex-shrink: 0;
+    }
+
+    .task-label {
+      flex: 1;
+      cursor: pointer;
+      word-break: break-word;
+      transition: color 0.15s;
+    }
+
+    .task-row.done .task-label {
+      text-decoration: line-through;
+      color: var(--item-done);
+    }
+
+    .del-task-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.75rem;
+      opacity: 0;
+      padding: 2px 4px;
+      border-radius: 3px;
+      transition: opacity 0.15s, color 0.15s;
+    }
+
+    .task-row:hover .del-task-btn {
+      opacity: 1;
+    }
+
+    .del-task-btn:hover {
+      color: var(--danger);
+    }
+
+    /* Resize Handle */
+    .resize-handle {
+      position: absolute;
+      right: 2px;
+      bottom: 2px;
+      width: 12px;
+      height: 12px;
+      cursor: nwse-resize;
+      border-right: 2px solid var(--text-muted);
+      border-bottom: 2px solid var(--text-muted);
+      opacity: 0.6;
+    }
+
+    .resize-handle:hover {
+      opacity: 1;
+      border-color: var(--note-accent, var(--accent));
+    }
+  </style>
+</head>
+<body>
+
+  <!-- App Header -->
+  <header>
+    <div class="header-left">
+      <h1>Todo List</h1>
+      <p id="board-subtitle">0 notes — drag header to arrange, drag corner to resize</p>
+    </div>
+    <div class="header-right">
+      <button class="btn-text" id="theme-toggle-btn">☀️ Light mode</button>
+      <button class="btn-text" id="rename-page-btn">Rename page</button>
+      <button class="btn-text" id="delete-page-btn">Delete page</button>
+      <button class="btn-primary" id="new-note-btn">+ New note</button>
+    </div>
+  </header>
+
+  <!-- Page/Board Tabs -->
+  <div class="tab-bar" id="tab-bar">
+    <button class="new-page-btn" id="new-page-btn">+ New page</button>
+  </div>
+
+  <!-- Canvas -->
+  <div class="canvas-viewport" id="viewport">
+    <div class="canvas-surface" id="canvas-surface"></div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'canvas_todo_boards_v4';
+
+    // 10 Distinct Accent Colors
+    const COLOR_PALETTE = [
+      '#38bdf8', // Sky Blue
+      '#06b6d4', // Teal Cyan
+      '#10b981', // Emerald Green
+      '#84cc16', // Lime Green
+      '#eab308', // Warm Amber
+      '#f97316', // Orange
+      '#f43f5e', // Rose Red
+      '#a855f7', // Purple
+      '#6366f1', // Indigo
+      '#64748b'  // Slate Gray
+    ];
+
+    // Helper to calculate rich rgba tint overlays
+    function hexToRgba(hex, alpha) {
+      let c = hex.replace('#', '');
+      if (c.length === 3) c = c.split('').map(x => x + x).join('');
+      const num = parseInt(c, 16);
+      return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
+    }
+
+    // Default Starter Setup
+    const defaultData = {
+      theme: 'dark',
+      activePageId: 'page-1',
+      pages: [
+        {
+          id: 'page-1',
+          name: 'My notes',
+          notes: [
+            {
+              id: 'n-1',
+              title: 'shadowing',
+              color: '#84cc16',
+              x: 60,
+              y: 50,
+              w: 300,
+              h: 220,
+              tasks: [
+                { id: 't1', text: 'video 4', hasBox: false, done: false }
+              ]
+            },
+            {
+              id: 'n-2',
+              title: 'every day work',
+              color: '#38bdf8',
+              x: 400,
+              y: 50,
+              w: 320,
+              h: 220,
+              tasks: [
+                { id: 't2', text: 'see herder terminal', hasBox: false, done: false },
+                { id: 't3', text: 'check port forwarding', hasBox: false, done: false }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'page-2',
+          name: 'demo account',
+          notes: []
+        },
+        {
+          id: 'page-3',
+          name: 'My Goal',
+          notes: []
+        }
+      ]
+    };
+
+    // Load Data
+    let appState = (function() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try { return JSON.parse(saved); } catch(e){}
+      }
+      return defaultData;
+    })();
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+    }
+
+    // Theme Management
+    const themeBtn = document.getElementById('theme-toggle-btn');
+    function applyTheme() {
+      document.documentElement.setAttribute('data-theme', appState.theme);
+      themeBtn.textContent = appState.theme === 'dark' ? '☀️ Light mode' : '🌙 Dark mode';
+    }
+    themeBtn.addEventListener('click', () => {
+      appState.theme = appState.theme === 'dark' ? 'light' : 'dark';
+      applyTheme();
+      saveState();
+      renderCanvas();
+    });
+    applyTheme();
+
+    function getActivePage() {
+      return appState.pages.find(p => p.id === appState.activePageId) || appState.pages[0];
+    }
+
+    // Tabs
+    const tabBar = document.getElementById('tab-bar');
+    const newPageBtn = document.getElementById('new-page-btn');
+
+    function renderTabs() {
+      const oldTabs = tabBar.querySelectorAll('.tab-item');
+      oldTabs.forEach(t => t.remove());
+
+      appState.pages.forEach(page => {
+        const tab = document.createElement('div');
+        tab.className = 'tab-item' + (page.id === appState.activePageId ? ' active' : '');
+        tab.innerHTML = `
+          <span class="tab-title">${page.name}</span>
+          <span class="tab-count">${page.notes.length} NOTE${page.notes.length === 1 ? '' : 'S'}</span>
+        `;
+        tab.addEventListener('click', () => {
+          appState.activePageId = page.id;
+          saveState();
+          renderTabs();
+          renderCanvas();
+        });
+        tabBar.insertBefore(tab, newPageBtn);
+      });
+    }
+
+    newPageBtn.addEventListener('click', () => {
+      const name = prompt('Enter new board/page title:');
+      if (!name || !name.trim()) return;
+      const newId = 'page-' + Date.now();
+      appState.pages.push({
+        id: newId,
+        name: name.trim(),
+        notes: []
+      });
+      appState.activePageId = newId;
+      saveState();
+      renderTabs();
+      renderCanvas();
+    });
+
+    document.getElementById('rename-page-btn').addEventListener('click', () => {
+      const page = getActivePage();
+      const updated = prompt('Rename this page:', page.name);
+      if (updated && updated.trim()) {
+        page.name = updated.trim();
+        saveState();
+        renderTabs();
+      }
+    });
+
+    document.getElementById('delete-page-btn').addEventListener('click', () => {
+      if (appState.pages.length <= 1) {
+        alert('You must keep at least one board page.');
+        return;
+      }
+      const page = getActivePage();
+      if (confirm(`Delete page "${page.name}" and all its notes?`)) {
+        appState.pages = appState.pages.filter(p => p.id !== page.id);
+        appState.activePageId = appState.pages[0].id;
+        saveState();
+        renderTabs();
+        renderCanvas();
+      }
+    });
+
+    // Add New Note
+    document.getElementById('new-note-btn').addEventListener('click', () => {
+      const page = getActivePage();
+      const viewport = document.getElementById('viewport');
+      const spawnX = viewport.scrollLeft + 60 + (page.notes.length * 25 % 200);
+      const spawnY = viewport.scrollTop + 60 + (page.notes.length * 20 % 160);
+      const initialColor = COLOR_PALETTE[page.notes.length % COLOR_PALETTE.length];
+
+      page.notes.push({
+        id: 'n-' + Date.now(),
+        title: 'New Section',
+        color: initialColor,
+        x: spawnX,
+        y: spawnY,
+        w: 300,
+        h: 220,
+        tasks: []
+      });
+      saveState();
+      renderTabs();
+      renderCanvas();
+    });
+
+    // Render Canvas Notes
+    const canvasSurface = document.getElementById('canvas-surface');
+    const boardSubtitle = document.getElementById('board-subtitle');
+
+    function renderCanvas() {
+      const page = getActivePage();
+      boardSubtitle.textContent = `${page.notes.length} notes on ${page.name} — drag header to arrange, drag corner to resize`;
+      canvasSurface.innerHTML = '';
+
+      const isDark = (appState.theme !== 'light');
+
+      page.notes.forEach(note => {
+        const cardColor = note.color || '#38bdf8';
+
+        // Calculate background tint strengths
+        const bodyAlpha = isDark ? 0.22 : 0.12;
+        const headerAlpha = isDark ? 0.38 : 0.22;
+        const borderAlpha = isDark ? 0.55 : 0.40;
+
+        const card = document.createElement('div');
+        card.className = 'note-card';
+        card.style.left = `${note.x}px`;
+        card.style.top = `${note.y}px`;
+        card.style.width = `${note.w}px`;
+        card.style.height = `${note.h}px`;
+
+        // Apply dynamic color variables to body and header
+        card.style.setProperty('--note-accent', cardColor);
+        card.style.setProperty('--note-bg-tint', hexToRgba(cardColor, bodyAlpha));
+        card.style.setProperty('--note-header-tint', hexToRgba(cardColor, headerAlpha));
+        card.style.setProperty('--note-border-tint', hexToRgba(cardColor, borderAlpha));
+
+        // Card Header
+        const header = document.createElement('div');
+        header.className = 'note-header';
+
+        const left = document.createElement('div');
+        left.className = 'note-header-left';
+        left.innerHTML = `
+          <span class="drag-dots">⋮⋮</span>
+          <span class="note-title" title="Click to rename">${note.title}</span>
+        `;
+
+        left.querySelector('.note-title').addEventListener('click', (e) => {
+          e.stopPropagation();
+          const newTitle = prompt('Rename section note:', note.title);
+          if (newTitle && newTitle.trim()) {
+            note.title = newTitle.trim();
+            saveState();
+            renderCanvas();
+          }
+        });
+
+        // Controls: Auto Color Cycle Circle + Delete
+        const controls = document.createElement('div');
+        controls.className = 'note-controls';
+
+        const colorBtn = document.createElement('div');
+        colorBtn.className = 'color-circle-btn';
+        colorBtn.style.backgroundColor = cardColor;
+        colorBtn.title = 'Click to switch color (cycles through 10 colors)';
+
+        // Click to cycle color in sequential order
+        colorBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          let idx = COLOR_PALETTE.indexOf(note.color);
+          let nextIdx = (idx + 1) % COLOR_PALETTE.length;
+          note.color = COLOR_PALETTE[nextIdx];
+          saveState();
+          renderCanvas();
+        });
+
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'ctrl-btn close';
+        closeBtn.textContent = '✕';
+        closeBtn.title = 'Delete note';
+        closeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          page.notes = page.notes.filter(n => n.id !== note.id);
+          saveState();
+          renderTabs();
+          renderCanvas();
+        });
+
+        controls.appendChild(colorBtn);
+        controls.appendChild(closeBtn);
+
+        header.appendChild(left);
+        header.appendChild(controls);
+
+        // Card Body
+        const body = document.createElement('div');
+        body.className = 'note-body';
+
+        // BY DEFAULT: Note (plain note, no checkbox)
+        let withCheckbox = false;
+
+        const inputBar = document.createElement('div');
+        inputBar.className = 'task-input-bar';
+        inputBar.innerHTML = `
+          <button class="mode-toggle-btn" title="Toggle between Note and Checkbox">📝 Note</button>
+          <input type="text" class="task-input" placeholder="Add plain note...">
+          <button class="task-add-btn">+</button>
+        `;
+
+        const modeBtn = inputBar.querySelector('.mode-toggle-btn');
+        const taskInput = inputBar.querySelector('.task-input');
+        const taskBtn = inputBar.querySelector('.task-add-btn');
+
+        modeBtn.addEventListener('click', () => {
+          withCheckbox = !withCheckbox;
+          if (withCheckbox) {
+            modeBtn.classList.add('has-box');
+            modeBtn.textContent = '☑ Checkbox';
+            taskInput.placeholder = 'Add task...';
+          } else {
+            modeBtn.classList.remove('has-box');
+            modeBtn.textContent = '📝 Note';
+            taskInput.placeholder = 'Add plain note...';
+          }
+        });
+
+        const submitTask = () => {
+          const val = taskInput.value.trim();
+          if (!val) return;
+          note.tasks.push({
+            id: 't-' + Date.now(),
+            text: val,
+            hasBox: withCheckbox,
+            done: false
+          });
+          saveState();
+          renderCanvas();
+        };
+
+        taskBtn.addEventListener('click', submitTask);
+        taskInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') submitTask();
+        });
+
+        const taskList = document.createElement('ul');
+        taskList.className = 'task-list';
+
+        note.tasks.forEach(task => {
+          const row = document.createElement('li');
+          row.className = 'task-row' + (task.done ? ' done' : '');
+
+          if (task.hasBox) {
+            const check = document.createElement('div');
+            check.className = 'custom-check';
+            check.addEventListener('click', () => {
+              task.done = !task.done;
+              saveState();
+              renderCanvas();
+            });
+            row.appendChild(check);
+          } else {
+            const bullet = document.createElement('div');
+            bullet.className = 'note-bullet';
+            row.appendChild(bullet);
+          }
+
+          const label = document.createElement('span');
+          label.className = 'task-label';
+          label.textContent = task.text;
+          label.addEventListener('click', () => {
+            if (task.hasBox) {
+              task.done = !task.done;
+              saveState();
+              renderCanvas();
+            }
+          });
+
+          const delBtn = document.createElement('button');
+          delBtn.className = 'del-task-btn';
+          delBtn.textContent = '✕';
+          delBtn.title = 'Remove item';
+          delBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            note.tasks = note.tasks.filter(t => t.id !== task.id);
+            saveState();
+            renderCanvas();
+          });
+
+          row.appendChild(label);
+          row.appendChild(delBtn);
+          taskList.appendChild(row);
+        });
+
+        body.appendChild(inputBar);
+        body.appendChild(taskList);
+
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'resize-handle';
+
+        card.appendChild(header);
+        card.appendChild(body);
+        card.appendChild(resizeHandle);
+        canvasSurface.appendChild(card);
+
+        // Drag Handler
+        header.addEventListener('mousedown', (e) => {
+          if (e.target.closest('.ctrl-btn') || e.target.closest('.color-circle-btn') || e.target.closest('.note-title')) return;
+          card.classList.add('active-drag');
+
+          let startX = e.clientX;
+          let startY = e.clientY;
+          let initialLeft = note.x;
+          let initialTop = note.y;
+
+          function onMouseMove(moveEvent) {
+            const dx = moveEvent.clientX - startX;
+            const dy = moveEvent.clientY - startY;
+            note.x = Math.max(10, initialLeft + dx);
+            note.y = Math.max(10, initialTop + dy);
+            card.style.left = `${note.x}px`;
+            card.style.top = `${note.y}px`;
+          }
+
+          function onMouseUp() {
+            card.classList.remove('active-drag');
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            saveState();
+          }
+
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
+        });
+
+        // Resize Handler
+        resizeHandle.addEventListener('mousedown', (e) => {
+          e.stopPropagation();
+          let startX = e.clientX;
+          let startY = e.clientY;
+          let startW = note.w;
+          let startH = note.h;
+
+          function onResizeMove(moveEvent) {
+            const dw = moveEvent.clientX - startX;
+            const dh = moveEvent.clientY - startY;
+            note.w = Math.max(220, startW + dw);
+            note.h = Math.max(140, startH + dh);
+            card.style.width = `${note.w}px`;
+            card.style.height = `${note.h}px`;
+          }
+
+          function onResizeUp() {
+            document.removeEventListener('mousemove', onResizeMove);
+            document.removeEventListener('mouseup', onResizeUp);
+            saveState();
+          }
+
+          document.addEventListener('mousemove', onResizeMove);
+          document.addEventListener('mouseup', onResizeUp);
+        });
+      });
+    }
+
+    // Initial Mount
+    renderTabs();
+    renderCanvas();
+  </script>
+</body>
+</html>
